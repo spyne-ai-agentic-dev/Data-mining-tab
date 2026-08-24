@@ -133,16 +133,7 @@
         <button class="reset-link" id="rescan">${ic('refresh','ic ic-sm')} Re-run scan</button>
       </div>
 
-      <div class="headline" data-reveal>
-        <div class="free"><s>${r.headline.free.was}</s> <b>${r.headline.free.now}</b></div>
-        <div class="hl-in">
-          <div class="hl-eyebrow">${r.headline.eyebrow}</div>
-          <div class="hl-big">${r.headline.big} <span class="u">${r.headline.bigUnit}</span></div>
-          <div class="hl-sub">${r.headline.sub}</div>
-          <div class="hl-row">${r.headline.metrics.map(m=>`<div class="m"><div class="v num"${m.accent?' style="color:var(--spyne-primary)"':''}>${m.v}</div><div class="k">${m.k}</div></div>`).join('')}</div>
-          <div class="commit">${ic('handshake','ic ic-18')} <span>${r.headline.commit}</span></div>
-        </div>
-      </div>
+      <!-- "Your business health report" hero hidden per request. To restore, re-render r.headline (still in the payload). -->
 
       <div class="res-section" data-reveal>
         <div class="sec-head"><span class="step">1</span><h3>Your business at a glance</h3><span class="note">Measured from your files</span></div>
@@ -186,7 +177,7 @@
             <thead><tr><th>Opportunity</th><th class="r">Eligible customers</th><th class="r">Extra appts / mo</th><th class="r">Status</th></tr></thead>
             <tbody>
               ${opp.groups.map(g => `<tr class="grp"><td colspan="4">${g.label}</td></tr>` + oppRows(g.items)).join('')}
-              <tr><td><div class="oname"><span class="oi lock">${ic('lock','ic ic-18')}</span><div><div class="onm">${opp.locked.n}</div><div class="odesc">${opp.locked.d}</div></div></div></td><td class="r"><span class="lead-v" style="color:var(--text-3)">${opp.locked.el}</span></td><td class="r"><span style="color:var(--text-3)">${opp.locked.ap}</span></td><td class="r"><span class="chip n">Locked</span></td></tr>
+              ${opp.locked ? `<tr><td><div class="oname"><span class="oi lock">${ic('lock','ic ic-18')}</span><div><div class="onm">${opp.locked.n}</div><div class="odesc">${opp.locked.d}</div></div></div></td><td class="r"><span class="lead-v" style="color:var(--text-3)">${opp.locked.el}</span></td><td class="r"><span style="color:var(--text-3)">${opp.locked.ap}</span></td><td class="r"><span class="chip n">Locked</span></td></tr>` : ''}
             </tbody>
             <tfoot><tr><td>${opp.footer.label}</td><td class="r num">${opp.footer.eligible} <span style="color:var(--text-3);font-weight:500">${opp.footer.eligibleNote}</span></td><td class="r"><span class="num" style="color:var(--spyne-primary)">${opp.footer.appts}</span></td><td class="r"><span style="font-weight:500;color:var(--text-3);font-size:12px">${opp.footer.apptsNote}</span></td></tr></tfoot>
           </table>
