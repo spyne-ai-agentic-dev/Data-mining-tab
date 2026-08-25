@@ -1,11 +1,22 @@
 version: 0.2
+# Type A, bundler variant (Infrastructure Onboarding §3b) - this is a
+# Vite/React app compiled to static, not the vanilla no-build template, so
+# it needs a Node CodeBuild image. Tell DevOps if the registered pipeline
+# isn't already using one.
 phases:
+  install:
+    runtime-versions:
+      nodejs: 22
   build:
     commands:
-      - echo "Validating static frontend..."
-      - test -f index.html
-      - test -f config.json
-      - test -f 404.html
+      - npm ci
+      - npm run build # outputs dist/
+      # config.json and 404.html live in public/, which Vite copies into
+      # dist/ unprocessed - no manual `cp` needed, just verify it landed.
+      - test -f dist/index.html
+      - test -f dist/config.json
+      - test -f dist/404.html
 artifacts:
+  base-directory: dist
   files:
     - "**/*"

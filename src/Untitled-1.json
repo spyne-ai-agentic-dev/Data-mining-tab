@@ -1,0 +1,61 @@
+{
+  "teamAgentMappingId": "912f33b6-62b4-4dd0-b083-6afa513d8072",
+  "enterpriseId": "a4007d11f",
+  "teamId": "a7a97bb9-d",
+  "agentTypeId": "5bb6653e-a3fe-4e6b-9ac6-528c096a2b13",
+  "isActive": true,
+  "isOnboarded": true,
+  "order": 1,
+  "agentName": "Mia",
+  "createdAt": {
+    "$date": "2026-05-26T14:04:33.361Z"
+  },
+  "updatedAt": {
+    "$date": "2026-07-30T20:00:07.408Z"
+  },
+  "agentImageUrl": "https://spyne-static.s3.us-east-1.amazonaws.com/converseai/agents/internal/emily.png",
+  "agentGender": "female",
+  "templateConfig": {
+    "voiceId": "0c5a541d-4696-40ed-a416-a758d4c185ea",
+    "supportedLanguageIds": [
+      "f44c4cbd-092e-4e4a-81cb-4085aa03a56b",
+      "8f2d3c76-4a59-4f8b-8c2f-9b63d0e78f1a"
+    ],
+    "countryCode": "US",
+    "city": "New York",
+    "nationality": "American"
+  },
+  "agentDescription": "A warm "people person" who remembers every detail and greets repeat callers by name. Loves matching families with roomy SUVs and never misses a follow-up.",
+  "templateId": "f933e66b-18d3-44bd-8ebc-4b8f7edc0980",
+  "transcriber": {
+    "model": "deepgram",
+    "language": "multi",
+    "provider": "nova-3",
+    "confidenceThreshold": 0.2,
+    "keyterm": null
+  },
+  "vapiConfig": {
+    "aiModel": {
+      "provider": "openai",
+      "model": "gpt-5.4"
+    }
+  },
+  "firstMessage": "Hi there, this is {{agent_name}} from {{dealership_name}}. How can I help you today?",
+  "__v": 0,
+  "ambientSound": {
+    "type": "off"
+  },
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "none",
+    "service_tier": "priority"
+  },
+  "tts": {
+    "provider": "elevenlabs",
+    "model": "eleven_flash_v2_5",
+    "voiceId": "XrExE9yKIg1WjnnlVkGX"
+  },
+  "avatarId": "fe0790af-d8bd-5965-bcbf-c946f5c8618c",
+   "isReceptionistSwitchEnabled" : true
+}
