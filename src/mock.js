@@ -1,10 +1,14 @@
 /* ============================================================================
  * Bundled sample data (Zeigler Hyundai, from the real 3-yr opportunity scan).
  *
- * This is the CONTRACT the backend must satisfy. When DM_CONFIG.useMock is
- * false, the API returns objects of exactly these shapes:
+ * No longer consumed anywhere — api.js always calls the real backend now.
+ * Kept as a live reference for the shapes the legacy scan endpoints (see
+ * src/api.js header) and the lead-uploads endpoints (leadUpload below) both
+ * return, and in case a mock mode gets reintroduced later:
  *   - GET  .../scans/:id/steps    -> DM_MOCK.steps        (array)
  *   - GET  .../scans/:id/results  -> DM_MOCK.results      (object)
+ *   - leadUpload.* mirrors the master-fields/analyze/confirm/status shapes
+ *     from LEAD_UPLOAD_API.md.
  * `uploadConfig` is frontend product copy for the pre-scan screen.
  *
  * All strings may contain inline <b>/<s> markup where noted; numbers are kept
@@ -141,5 +145,92 @@ window.DM_MOCK = {
 
     cta:{ title:'Ready to turn this on?', desc:'Launch your first campaign and Vini starts booking these appointments tonight.',
           secondary:'Download report', primary:'Launch first campaign' },
+  },
+
+  /* -------- lead-uploads flow (LEAD_UPLOAD_API.md) --------
+   * Column names below match the Zeigler sample's own lead export (see
+   * uploadConfig.zones[0].columns above) so the mock mapping table reads
+   * as the same dealer's file, not a disconnected fixture. */
+  leadUpload: {
+    // GET /lead-uploads/master-fields
+    masterFields: {
+      count: 16,
+      fields: [
+        { key:'consent_call', label:'Call consent', type:'CONSENT', required:false, critical:true,
+          description:'Whether the customer may be called. Unmapped means consent.call is not written; existing consent on the customer is left unchanged.' },
+        { key:'consent_sms', label:'SMS consent', type:'CONSENT', required:false, critical:true,
+          description:'Whether the customer may be texted. Unmapped means SMS steps skipped, calls unaffected.' },
+        { key:'consent_email', label:'Email consent', type:'CONSENT', required:false, critical:true,
+          description:'Whether the customer may be emailed. Unmapped means email steps skipped.' },
+        { key:'external_crm_lead_id', label:'CRM lead ID', type:'STRING', required:false, critical:false,
+          description:"The CRM's own lead id. Doubles as the upsert key, so a wrong binding here merges unrelated customers." },
+        { key:'name', label:'Customer name', type:'STRING', required:false, critical:false,
+          description:'Full customer name. First/last split columns both bind here; the ingest joins them.' },
+        { key:'phone', label:'Phone', type:'PHONE', required:false, critical:false,
+          description:'Primary contact number. Normalised to 1+10 digits; rows with an unparseable value fail.' },
+        { key:'email', label:'Email', type:'EMAIL', required:false, critical:false,
+          description:'Customer email address.' },
+        { key:'lead_created_at', label:'Lead created at', type:'DATETIME', required:false, critical:false,
+          description:'When the lead was created. Every aged / never-contacted window derives from it.' },
+        { key:'lead_status', label:'Lead status', type:'STRING', required:false, critical:false,
+          description:'Drives the kill list - BAD / SOLD / LOST cancel any scheduled touches on commit.' },
+        { key:'lead_source', label:'Lead source', type:'STRING', required:false, critical:false,
+          description:'Marketing origin of the lead, e.g. Internet, Showroom, Phone.' },
+        { key:'vehicle_interest', label:'Vehicle of interest', type:'STRING', required:false, critical:false,
+          description:'What the agent leads the call with - the vehicle the customer enquired about.' },
+        { key:'trade_vehicle', label:'Trade-in vehicle', type:'STRING', required:false, critical:false,
+          description:'The vehicle the customer is trading in.' },
+        { key:'year', label:'Year', type:'STRING', required:false, critical:false,
+          description:'Model year of the vehicle of interest.' },
+        { key:'last_activity_at', label:'Last activity at', type:'DATETIME', required:false, critical:false,
+          description:'Most recent recorded touch on the lead.' },
+        { key:'sold_at', label:'Sold / delivered at', type:'DATETIME', required:false, critical:false,
+          description:'When the vehicle was sold or delivered - the clock the ownership cycle runs on.' },
+        { key:'salesperson', label:'Salesperson', type:'STRING', required:false, critical:false,
+          description:'Assigned rep. Used for write-back attribution.' },
+      ],
+    },
+
+    // POST /lead-uploads/mapping/analyze - single BASE file, matches §3a
+    analyze: {
+      mappingKey: 'mock-mapping-key-zeigler',
+      expiresInSeconds: 10800,
+      files: [{
+        fileKey: 'all-leads-zeigler',
+        fileName: 'all-leads-zeigler.xlsx',
+        role: 'BASE',
+        columns: [
+          { header:'Name', dataType:'STRING', sampleValues:['J*** D***','A*** K***'], mappedField:'name', matchKind:'EXACT', confidence:1, needsConfirmation:false },
+          { header:'Cell Phone', dataType:'PHONE', sampleValues:['##########'], mappedField:'phone', matchKind:'EXACT', confidence:1, needsConfirmation:false },
+          { header:'Status', dataType:'STRING', sampleValues:['Open','Sold'], mappedField:'lead_status', matchKind:'EXACT', confidence:1, needsConfirmation:false },
+          { header:'Date In', dataType:'DATETIME', sampleValues:['2026-01-14'], mappedField:'lead_created_at', matchKind:'EXACT', confidence:1, needsConfirmation:false },
+          { header:'Date Closed', dataType:'DATETIME', sampleValues:['2026-02-02'], mappedField:'sold_at', matchKind:'SUBSTRING', confidence:1, needsConfirmation:false },
+          { header:'Trade Veh', dataType:'STRING', sampleValues:['Accord'], mappedField:'trade_vehicle', matchKind:'EXACT', confidence:1, needsConfirmation:false },
+          { header:'Trade Year', dataType:'STRING', sampleValues:['2019'], mappedField:'year', matchKind:'LLM', confidence:0.81, needsConfirmation:false },
+          { header:'Wanted Vehicle', dataType:'STRING', sampleValues:['Tucson'], mappedField:'vehicle_interest', matchKind:'EXACT', confidence:1, needsConfirmation:false },
+          { header:'Source', dataType:'STRING', sampleValues:['Internet','Showroom'], mappedField:'lead_source', matchKind:'EXACT', confidence:1, needsConfirmation:false },
+          { header:'OK to Call', dataType:'CONSENT', sampleValues:['Yes','No'], mappedField:null, matchKind:'NONE', confidence:0, needsConfirmation:false },
+        ],
+      }],
+      valid: true,
+      blocking: [],
+      missingRequired: [],
+      needsConfirmation: [],
+      warnings: [ { code:'CONSENT_UNMAPPED', message:'Call consent is not mapped. Consent will not be written - existing customer consent is left unchanged.' } ],
+    },
+
+    // POST /lead-uploads -> 202
+    confirm: { flowId: 'mock-flow-zeigler', state: 'queued', warnings: [] },
+
+    // GET /lead-uploads/{flowId}/status - each poll call advances one step,
+    // holding on the last (terminal) entry once reached.
+    statusSequence: [
+      { state:'processing', phase:'INGESTING', processed:6000, total:29874 },
+      { state:'processing', phase:'INGESTING', processed:16000, total:29874 },
+      { state:'processing', phase:'RECONCILING', processed:26000, total:29874 },
+      { state:'completed_with_failures', phase:'DONE',
+        result:{ rows:29874, newLeads:412, updated:29222, cancelled:187, eligible:21790, opportunities:[] },
+        failures:[ { reason:'INVALID_PHONE', rows:196 }, { reason:'MISSING_REQUIRED_FIELD', rows:44 } ] },
+    ],
   },
 };

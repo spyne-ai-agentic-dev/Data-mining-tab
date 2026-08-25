@@ -232,9 +232,49 @@ a{color:inherit; text-decoration:none}
 
 .helpbox{display:flex; gap:12px; padding:14px 16px; border-radius:8px; background:var(--info-soft); border:1px solid #BFDBFE; margin-bottom:20px}
 .helpbox .ic{color:var(--info); flex:0 0 auto}
-.helpbox p{font-size:13px; color:var(--text-2); line-height:1.5}
+.helpbox p{font-size:13px; color:var(--text-2); line-height:1.5; margin-top:4px}
+.helpbox p:first-of-type{margin-top:0}
 .helpbox b{color:var(--text); font-weight:600}
+.helpbox.warn{background:var(--warning-soft); border-color:var(--warning-bd)}
+.helpbox.warn .ic{color:var(--warning-ink)}
+.helpbox.err{background:var(--error-soft); border-color:#FCA5A1}
+.helpbox.err .ic{color:var(--error)}
+.helpbox.err b{color:var(--error)}
 .reset-link{font-size:12.5px; color:var(--text-3); display:inline-flex; align-items:center; gap:6px}
 .reset-link:hover{color:var(--spyne-primary)}
+
+/* ===== MAPPING STATE ===== */
+.drop-grid.one{grid-template-columns:1fr; max-width:520px}
+.consent-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+@media (max-width:700px){.consent-grid{grid-template-columns:1fr}}
+.consent-card{border:1px solid var(--border); border-radius:8px; background:var(--surface-2); padding:12px 14px}
+.consent-card.on{background:var(--success-soft); border-color:var(--success-bd)}
+.consent-card .cc-head{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-3)}
+.consent-card.on .cc-head{color:var(--success)}
+.consent-card .cc-off{font-weight:400; color:var(--text-3); font-size:12px}
+.consent-card p{font-size:12px; color:var(--text-3); margin-top:5px; line-height:1.4}
+.maptable{width:100%; border-collapse:collapse; font-size:13.5px}
+.maptable thead th{font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); text-align:left; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface-2)}
+.maptable td{padding:11px 16px; border-bottom:1px solid var(--border-2); vertical-align:top}
+.maptable tr:last-child td{border-bottom:0}
+.maptable tr.gate-empty{background:var(--error-soft)}
+.maptable .mapwhat{color:var(--text-2); font-size:12.5px; line-height:1.45; max-width:44ch}
+.maptable select.mapsel{width:100%; max-width:220px; height:34px; border-radius:6px; border:1px solid var(--border); padding:0 8px; font:inherit; font-size:13px; background:var(--surface); color:var(--text)}
+.maptable select.mapsel:focus-visible{border-color:var(--spyne-primary)}
+.maptable select.mapsel.err{border-color:var(--error)}
+.maptable .mapmeta{font-size:11px; color:var(--text-3); margin-top:4px}
+
+.spin{display:inline-block; width:16px; height:16px; flex:0 0 auto; border:2px solid var(--border); border-top-color:var(--spyne-primary); border-radius:50%; animation:spin .7s linear infinite}
+
+.opptable-head{display:grid; grid-template-columns:1fr 170px 130px; gap:10px; padding:10px 16px; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--surface-2)}
+.opptable-group{padding:10px 16px 6px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-3); background:var(--surface-2); border-bottom:1px solid var(--border-2)}
+.opptable-row{display:grid; grid-template-columns:1fr 170px 130px; gap:10px; align-items:center; padding:13px 16px; border-bottom:1px solid var(--border-2)}
+.opptable-row:last-child{border-bottom:0}
+.opp-icon{width:34px; height:34px; border-radius:9px; background:var(--spyne-primary-soft); color:var(--spyne-primary); display:flex; align-items:center; justify-content:center; flex:0 0 auto}
+.opp-name{font-size:13.5px; font-weight:600; color:var(--text)}
+.opp-desc{font-size:12px; color:var(--text-3); margin-top:2px; line-height:1.4}
+.opp-eligible{font-size:16px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums}
+.opp-eligible.dash{color:var(--text-faint); font-weight:500}
+.opp-status{display:flex; justify-content:flex-end}
 
 
