@@ -3,7 +3,6 @@ version: 0.2
 # from Type A (S3+CloudFront) since this now runs as a container on ECS.
 # Docker build + ECR push; imagedefinitions.json is the deploy handoff.
 artifacts:
-  base-directory: dist
   files:
     - imagedefinitions.json
 phases:
