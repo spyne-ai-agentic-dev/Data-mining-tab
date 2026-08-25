@@ -1,15 +1,13 @@
 version: 0.2
+# Type B, containerized frontend (Infrastructure Onboarding §3c) - ECS
+# deploy handoff. imagedefinitions.json (from code-build.yaml) is what
+# actually plugs into the pipeline; this stage just validates it landed.
 phases:
   post_build:
     commands:
-      - >
-        aws s3 sync . s3://$BUCKET/ --delete
-        --exclude "*.html" --exclude "code-*.yaml"
-        --metadata-directive REPLACE --cache-control max-age=86400,public
-      - >
-        aws s3 cp . s3://$BUCKET/ --exclude "*" --include "*.html"
-        --metadata-directive REPLACE --cache-control max-age=0,no-cache,no-store,must-revalidate --recursive
-      - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
+      - test -f imagedefinitions.json
+      - cat imagedefinitions.json
+      - echo Container deploy completed
 artifacts:
   files:
-    - "**/*"
+    - imagedefinitions.json
