@@ -16,6 +16,11 @@ phases:
       - test -f dist/index.html
       - test -f dist/config.json
       - test -f dist/404.html
+      # base-directory: dist below means **/* only sweeps dist/ - without
+      # this, code-deploy.yaml (repo root, outside dist/) is silently
+      # dropped from the artifact and the deploy stage 404s on it (§3,
+      # §9 "Deploy: code-deploy.yaml: no such file").
+      - cp code-deploy.yaml dist/
 artifacts:
   base-directory: dist
   files:
