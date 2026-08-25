@@ -128,7 +128,7 @@ export default function App() {
   const handleFileChange = useCallback((file) => {
     const s = stateRef.current;
     if (!file) return;
-    if (!/\.xlsx$/i.test(file.name)) { s.attachError = 'Only .xlsx files are supported.'; rerender(); return; }
+    if (!/\.(xlsx|csv)$/i.test(file.name)) { s.attachError = 'Only .xlsx or .csv files are supported.'; rerender(); return; }
     s.fileObj = file;
     s.fileName = `${file.name} · ${fmtSize(file.size)}`;
     s.attachError = null;

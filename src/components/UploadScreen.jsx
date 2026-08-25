@@ -43,7 +43,7 @@ export function UploadScreen({ state, onFileChange, onContinue }) {
             <span className="di"><Icon name={hasFile ? 'check_circle' : 'file'} className="ic ic-lg" /></span>
             <div>
               <h4>Lead export</h4>
-              <div className="req">Required &middot; .xlsx only</div>
+              <div className="req">Required &middot; .xlsx or .csv</div>
             </div>
           </div>
           {hasFile ? (
@@ -63,7 +63,7 @@ export function UploadScreen({ state, onFileChange, onContinue }) {
           )}
           <input
             type="file"
-            accept=".xlsx"
+            accept=".xlsx,.csv"
             id="fileInput"
             hidden
             onChange={(e) => onFileChange(e.target.files[0])}
