@@ -1,0 +1,11 @@
+version: 0.2
+phases:
+  build:
+    commands:
+      - echo "Validating static frontend..."
+      - test -f index.html
+      - test -f config.json
+      - test -f 404.html
+artifacts:
+  files:
+    - "**/*"

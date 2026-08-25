@@ -1,0 +1,4 @@
+{
+  "apiBaseUrl": "https://uat-api.spyne.xyz",
+  "s3BucketBaseUrl": "https://spyne-uat-convert-ai.s3.us-east-1.amazonaws.com"
+}

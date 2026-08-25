@@ -1,0 +1,15 @@
+version: 0.2
+phases:
+  post_build:
+    commands:
+      - >
+        aws s3 sync . s3://$BUCKET/ --delete
+        --exclude "*.html" --exclude "code-*.yaml"
+        --metadata-directive REPLACE --cache-control max-age=86400,public
+      - >
+        aws s3 cp . s3://$BUCKET/ --exclude "*" --include "*.html"
+        --metadata-directive REPLACE --cache-control max-age=0,no-cache,no-store,must-revalidate --recursive
+      - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
+artifacts:
+  files:
+    - "**/*"
