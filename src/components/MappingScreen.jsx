@@ -1,6 +1,5 @@
+import { cleanWarningMessage } from '../lib/clean-warning-message.js';
 import { Icon } from '../lib/icons.jsx';
-
-const MATCH_LABEL = { EXACT: 'exact match', SUBSTRING: 'partial match', LLM: 'AI match', MANUAL: 'manual', NONE: '' };
 
 function ConsentCard({ fieldKey, label, icon, onCopy, offCopy, fieldColumn }) {
   const on = !!fieldColumn(fieldKey);
@@ -15,7 +14,14 @@ function ConsentCard({ fieldKey, label, icon, onCopy, offCopy, fieldColumn }) {
   );
 }
 
-export function MappingScreen({ state, fieldColumn, onOverrideChange, onBack, onRerun, onConfirm }) {
+/**
+ * Binding now comes from a stored mapping keyed on (crm, type), reviewed
+ * once by a person and applied identically every run (CSV_ANALYZE_CHANGES.md)
+ * - so this screen is read-only (header, bound field, first three raw
+ * sample values), not an editable per-column review step the way it used
+ * to be. A wrong binding gets fixed centrally, not per upload.
+ */
+export function MappingScreen({ state, fieldColumn, onBack, onRerun, onConfirm }) {
   if (state.mappingLoading) {
     return (
       <div className="an-wrap">
@@ -26,10 +32,14 @@ export function MappingScreen({ state, fieldColumn, onOverrideChange, onBack, on
     );
   }
 
-  const matched = state.analyzedColumns.filter((c) => {
-    const hasOverride = Object.prototype.hasOwnProperty.call(state.overrides, c.header);
-    return hasOverride ? !!state.overrides[c.header] : !!c.mappedField;
-  }).length;
+  const masterFieldByKey = {};
+  state.masterFields.forEach((f) => { masterFieldByKey[f.key] = f; });
+
+  // Unmapped columns (kept server-side as extras) aren't shown here - this
+  // table is only the bound-column view.
+  const mappedColumns = state.analyzedColumns
+    .filter((c) => c.mappedField && masterFieldByKey[c.mappedField])
+    .map((c) => ({ col: c, field: masterFieldByKey[c.mappedField] }));
 
   return (
     <>
@@ -38,35 +48,26 @@ export function MappingScreen({ state, fieldColumn, onOverrideChange, onBack, on
           <div className="page-eyebrow">Sales</div>
           <div className="page-title">Data Mining</div>
           <div className="page-desc">
-            Map their columns to our fields. Their names are not ours — this is what makes the
-            opportunity math portable.
+            Their columns, bound to our fields. This comes from the saved mapping for this CRM and
+            file type, reviewed once by a person - it&apos;s read-only here.
           </div>
         </div>
       </div>
 
       <div className="card pad" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <b>{matched} of {state.analyzedColumns.length} matched automatically</b>
+          <b>{mappedColumns.length} of {state.analyzedColumns.length} columns bound</b>
           <button type="button" className="reset-link" onClick={onRerun}>
             <Icon name="refresh" className="ic ic-sm" /> Re-run auto-detect
           </button>
         </div>
       </div>
 
-      {state.blocking.length > 0 && (
-        <div className="helpbox err" style={{ marginBottom: 14 }}>
-          <Icon name="warning" className="ic" />
-          <div>
-            <b>Fix these before confirming:</b>
-            {state.blocking.map((b, i) => <p key={i}>{b.message}</p>)}
-          </div>
-        </div>
-      )}
       {state.warnings.length > 0 && (
         <div className="helpbox warn" style={{ marginBottom: 14 }}>
           <Icon name="warning" className="ic" />
           <div>
-            {state.warnings.map((w, i) => <p key={i}>{w.message}</p>)}
+            {state.warnings.map((w, i) => <p key={i}>{cleanWarningMessage(w.message)}</p>)}
           </div>
         </div>
       )}
@@ -91,37 +92,18 @@ export function MappingScreen({ state, fieldColumn, onOverrideChange, onBack, on
 
       <div className="card" style={{ overflow: 'hidden', marginTop: 14 }}>
         <table className="maptable">
-          <thead><tr><th>Our field</th><th>Their column</th><th>What it drives</th></tr></thead>
+          <thead><tr><th>Their column</th><th>Our field</th><th>First 3 values</th></tr></thead>
           <tbody>
-            {state.masterFields.map((f) => {
-              const col = fieldColumn(f.key);
-              const isGate = f.critical;
-              const isUnmapped = isGate && !col;
-              return (
-                <tr key={f.key} className={isUnmapped ? 'gate-empty' : ''}>
-                  <td>
-                    <b>{f.label}</b>{' '}
-                    {isGate
-                      ? <span className="chip w">GATE</span>
-                      : (f.required ? <span className="chip n">REQ</span> : null)}
-                  </td>
-                  <td>
-                    <select
-                      className={`mapsel ${isUnmapped ? 'err' : ''}`}
-                      value={col ? col.header : ''}
-                      onChange={(e) => onOverrideChange(f.key, e.target.value)}
-                    >
-                      <option value="">Not mapped</option>
-                      {state.analyzedColumns.map((c) => (
-                        <option key={c.header} value={c.header}>{c.header}</option>
-                      ))}
-                    </select>
-                    {col && <div className="mapmeta">{MATCH_LABEL[col.matchKind] || ''}</div>}
-                  </td>
-                  <td className="mapwhat">{f.description}</td>
-                </tr>
-              );
-            })}
+            {mappedColumns.map(({ col, field }) => (
+              <tr key={col.header}>
+                <td><b>{col.header}</b></td>
+                <td>
+                  {field.label}{' '}
+                  {field.critical && <span className="chip w">GATE</span>}
+                </td>
+                <td className="mapwhat">{(col.sampleValues || []).join(', ') || '—'}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -138,7 +120,7 @@ export function MappingScreen({ state, fieldColumn, onOverrideChange, onBack, on
         <button
           type="button"
           className="btn lg"
-          disabled={!state.mappingKey || state.blocking.length > 0 || state.confirmLoading}
+          disabled={!state.mappingKey || state.confirmLoading}
           onClick={onConfirm}
         >
           <Icon name="rocket" className="ic ic-sm" /> {state.confirmLoading ? 'Confirming…' : 'Confirm & sync'}

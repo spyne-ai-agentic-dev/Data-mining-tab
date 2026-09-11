@@ -14,6 +14,7 @@
  * ==========================================================================*/
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './lib/api.js';
+import { cleanWarningMessage } from './lib/clean-warning-message.js';
 import { ENTERPRISE_ID, TEAM_ID } from './lib/config.js';
 import { UploadScreen } from './components/UploadScreen.jsx';
 import { MappingScreen } from './components/MappingScreen.jsx';
@@ -31,16 +32,16 @@ function makeInitialState() {
     // upload (attach)
     fileObj: null,
     fileName: null,
+    fileType: null, // one of FILE_TYPE_OPTIONS' values - required before Continue
     attachError: null,
+    teamStatus: null, // GET /lead-uploads/team-status - crm + lastUploadAt for this team
 
     // mapping
     mappingLoading: false,
     mappingKey: null,
     fileKey: null, // fileKey the analyze response assigned to our one file
     masterFields: [], // GET /master-fields .fields
-    analyzedColumns: [], // analyze response .files[0].columns
-    overrides: {}, // header -> mappedField|null, only user-changed bindings
-    blocking: [],
+    analyzedColumns: [], // analyze response .files[0].columns - read-only, no overrides (CSV_ANALYZE_CHANGES.md)
     warnings: [],
     confirmLoading: false,
     confirmError: null,
@@ -74,19 +75,23 @@ export default function App() {
     window.scrollTo(0, 0);
   });
 
+  useEffect(() => {
+    if (!ENTERPRISE_ID || !TEAM_ID) return;
+    api.getTeamStatus({ enterpriseId: ENTERPRISE_ID, teamId: TEAM_ID })
+      .then((teamStatus) => { stateRef.current.teamStatus = teamStatus; rerender(); })
+      .catch(() => {});
+  }, [rerender]);
+
   const resetToUpload = useCallback(() => {
     stateRef.current = makeInitialState();
     rerender();
   }, [rerender]);
 
+  // Binding is read-only now (CSV_ANALYZE_CHANGES.md) - no overrides layer,
+  // just whatever the stored mapping actually bound.
   const fieldColumn = useCallback((fieldKey) => {
     const s = stateRef.current;
-    for (const col of s.analyzedColumns) {
-      const hasOverride = Object.prototype.hasOwnProperty.call(s.overrides, col.header);
-      const effective = hasOverride ? s.overrides[col.header] : col.mappedField;
-      if (effective === fieldKey) return col;
-    }
-    return null;
+    return s.analyzedColumns.find((col) => col.mappedField === fieldKey) || null;
   }, []);
 
   const goToMapping = useCallback(async () => {
@@ -94,32 +99,37 @@ export default function App() {
     s.name = 'mapping';
     s.mappingLoading = true;
     s.mappingKey = null; s.fileKey = null;
-    s.analyzedColumns = []; s.overrides = {};
-    s.blocking = []; s.warnings = []; s.confirmError = null;
+    s.analyzedColumns = [];
+    s.warnings = []; s.confirmError = null;
     rerender();
     try {
       const s3Key = await api.uploadFileToS3(s.fileObj);
+      // team-status already told us the real connected CRM (see
+      // UploadScreen's "CRM connected · X" chip) - the stored mapping is
+      // keyed on that real slug, so sending the generic 'other' here when
+      // we already know it is a guaranteed 404 at analyze/confirm time.
+      // Only fall back to 'other'/'CRM export' when nothing is connected.
+      const crm = s.teamStatus?.crm;
       const [mf, az] = await Promise.all([
         api.getMasterFields(),
         api.analyzeMapping({
           enterpriseId: ENTERPRISE_ID,
           teamId: TEAM_ID,
-          providerName: 'other',
-          providerLabel: 'CRM export',
-          files: [{ s3Key }],
+          providerName: crm || 'other',
+          providerLabel: crm ? undefined : 'CRM export',
+          files: [{ s3Key, type: s.fileType }],
         }),
       ]);
       s.masterFields = mf.fields || [];
       const file = (az.files || [])[0] || { fileKey: '', columns: [] };
       s.fileKey = file.fileKey;
       s.analyzedColumns = file.columns || [];
-      s.blocking = az.blocking || [];
       s.warnings = az.warnings || [];
       s.mappingKey = az.mappingKey;
       s.mappingLoading = false;
       rerender();
     } catch (err) {
-      s.error = err.message || String(err);
+      s.error = cleanWarningMessage(err.message || String(err));
       s.name = 'error';
       rerender();
     }
@@ -135,20 +145,10 @@ export default function App() {
     rerender();
   }, [rerender]);
 
-  const handleOverrideChange = useCallback((fieldKey, newHeader) => {
-    const s = stateRef.current;
-    const prevCol = fieldColumn(fieldKey);
-    if (prevCol && prevCol.header !== newHeader) s.overrides[prevCol.header] = null;
-    if (newHeader) s.overrides[newHeader] = fieldKey; // supersedes any other field that held this column
+  const handleFileTypeChange = useCallback((fileType) => {
+    stateRef.current.fileType = fileType;
     rerender();
-  }, [fieldColumn, rerender]);
-
-  const buildOverridesPayload = useCallback(() => {
-    const s = stateRef.current;
-    return Object.keys(s.overrides).map((header) => ({
-      fileKey: s.fileKey, header, mappedField: s.overrides[header],
-    }));
-  }, []);
+  }, [rerender]);
 
   const pollOpportunities = useCallback(async () => {
     const s = stateRef.current;
@@ -216,12 +216,11 @@ export default function App() {
 
   const confirmAndSync = useCallback(async () => {
     const s = stateRef.current;
-    if (!s.mappingKey || s.blocking.length) return;
+    if (!s.mappingKey) return;
     s.confirmLoading = true; s.confirmError = null; rerender();
-    const result = await api.confirmMapping({
-      mappingKey: s.mappingKey,
-      overrides: buildOverridesPayload(),
-    });
+    // `overrides` is gone (CSV_ANALYZE_CHANGES.md) - the server ignores it
+    // now, a wrong binding is fixed centrally instead of per upload.
+    const result = await api.confirmMapping({ mappingKey: s.mappingKey });
     s.confirmLoading = false;
     if (result.ok) {
       s.flowId = result.data.flowId;
@@ -230,11 +229,19 @@ export default function App() {
       rerender();
       pollSyncStatus();
     } else {
-      s.confirmError = (result.error && result.error.message) ||
-        (result.status === 404 ? 'This mapping expired — re-run auto-detect and try again.' : 'Could not confirm the upload.');
+      // The 422 body's operator-facing reasons ride under `context.blocking`
+      // (the global exception filter drops anything else at the top level) -
+      // reading `.error.message` alone shows only a generic "cannot be
+      // committed" line and silently drops why.
+      const blockingMessages = ((result.error && result.error.context && result.error.context.blocking) || [])
+        .map((b) => cleanWarningMessage(b.message));
+      s.confirmError = blockingMessages.length
+        ? blockingMessages.join(' ')
+        : (result.error && result.error.message && cleanWarningMessage(result.error.message)) ||
+          (result.status === 404 ? 'This mapping expired — re-run auto-detect and try again.' : 'Could not confirm the upload.');
       rerender();
     }
-  }, [buildOverridesPayload, pollSyncStatus, rerender]);
+  }, [pollSyncStatus, rerender]);
 
   const handleBackToUpload = useCallback(() => {
     stateRef.current.name = 'upload';
@@ -243,13 +250,19 @@ export default function App() {
 
   let screen;
   if (state.name === 'upload') {
-    screen = <UploadScreen state={state} onFileChange={handleFileChange} onContinue={goToMapping} />;
+    screen = (
+      <UploadScreen
+        state={state}
+        onFileChange={handleFileChange}
+        onFileTypeChange={handleFileTypeChange}
+        onContinue={goToMapping}
+      />
+    );
   } else if (state.name === 'mapping') {
     screen = (
       <MappingScreen
         state={state}
         fieldColumn={fieldColumn}
-        onOverrideChange={handleOverrideChange}
         onBack={handleBackToUpload}
         onRerun={goToMapping}
         onConfirm={confirmAndSync}

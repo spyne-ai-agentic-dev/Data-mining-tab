@@ -66,6 +66,16 @@ export const api = {
   },
 
   /**
+   * GET /integrations/internal/lead-uploads/team-status - which CRM (if
+   * any) is connected for this team, and when the last manual upload
+   * landed. `crm` is null when no CRM is connected.
+   */
+  async getTeamStatus({ enterpriseId, teamId }) {
+    const params = new URLSearchParams({ teamId, enterpriseId });
+    return getLeadJSON(`/integrations/internal/lead-uploads/team-status?${params.toString()}`);
+  },
+
+  /**
    * POST /lead-uploads/mapping/analyze - proposes a mapping. Commits nothing.
    * `files` = [{ s3Key }] - this flow only ever sends a single file.
    */
@@ -81,14 +91,15 @@ export const api = {
   },
 
   /**
-   * POST /lead-uploads - confirms the mapping and queues the run.
+   * POST /lead-uploads - confirms the mapping and queues the run. `overrides`
+   * is gone (CSV_ANALYZE_CHANGES.md) - the server ignores it now.
    * Returns { ok:true, data:{flowId,...} } on 202, or
    * { ok:false, status, error } on 404/422/503 - callers branch on `.ok`
    * rather than catching, since a 422 is a normal, expected outcome here.
    */
-  async confirmMapping({ mappingKey, overrides, keepUnmapped, acknowledgeWarnings, confirmedBy }) {
+  async confirmMapping({ mappingKey, keepUnmapped, acknowledgeWarnings, confirmedBy }) {
     const res = await postLeadJSON('/integrations/lead-uploads', {
-      mappingKey, overrides, keepUnmapped, acknowledgeWarnings, confirmedBy,
+      mappingKey, keepUnmapped, acknowledgeWarnings, confirmedBy,
     });
     if (res.ok) return { ok: true, data: await res.json() };
     const error = await res.json().catch(() => null);
@@ -115,5 +126,39 @@ export const api = {
   /** GET .../data-mining/opportunities - poll while `poll:true`, stop once false. */
   async getDataMiningOpportunities() {
     return getLeadJSON('/conversation/campaign-builder/data-mining/opportunities');
+  },
+
+  /**
+   * POST /integrations/data-ingestion/manual-upload - direct multipart file
+   * upload, no S3 presign step first (this endpoint takes the raw file
+   * itself, unlike the lead-uploads flow above). Needs XMLHttpRequest rather
+   * than fetch - fetch has no cross-browser upload-progress event, and the
+   * modal shows a real percentage.
+   */
+  manualUpload({ file, enterpriseId, teamId, department, onProgress }) {
+    return new Promise((resolve, reject) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('enterpriseId', enterpriseId);
+      fd.append('teamId', teamId);
+      fd.append('department', department);
+      fd.append('provider', 'spyne');
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${leadBase()}/integrations/data-ingestion/manual-upload`);
+      xhr.setRequestHeader('Authorization', `Bearer ${config.leadUpload.bearerToken || ''}`);
+      xhr.upload.onprogress = (e) => {
+        if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText || '{}')); } catch { resolve({}); }
+        } else {
+          reject(new Error(`POST /manual-upload -> ${xhr.status}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.send(fd);
+    });
   },
 };

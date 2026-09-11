@@ -240,8 +240,33 @@ a{color:inherit; text-decoration:none}
 .helpbox.err{background:var(--error-soft); border-color:#FCA5A1}
 .helpbox.err .ic{color:var(--error)}
 .helpbox.err b{color:var(--error)}
+.helpbox.ok{background:var(--success-soft); border-color:var(--success-bd)}
+.helpbox.ok .ic{color:var(--success)}
+.helpbox.ok b{color:var(--success)}
 .reset-link{font-size:12.5px; color:var(--text-3); display:inline-flex; align-items:center; gap:6px}
 .reset-link:hover{color:var(--spyne-primary)}
+
+/* ===== UPLOAD DATA MODAL ===== */
+.modal-overlay{position:fixed; inset:0; background:rgba(16,24,40,.48); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px}
+.modal-card{background:var(--surface); border-radius:12px; box-shadow:var(--shadow-pop); width:100%; max-width:520px; padding:28px; max-height:90vh; overflow-y:auto}
+.modal-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+.modal-head h2{font-size:20px; font-weight:700}
+.modal-close{color:var(--text-3); flex:0 0 auto; padding:2px}
+.modal-close:hover{color:var(--text)}
+.modal-sub{font-size:13.5px; color:var(--text-2); margin-top:6px; line-height:1.5}
+.modal-foot{display:flex; justify-content:flex-end; gap:10px; margin-top:22px}
+
+.upload-drop{margin-top:20px; border:1.5px dashed #CBD1DA; border-radius:10px; background:var(--surface-2); padding:36px 20px; text-align:center; transition:border-color .15s, background .15s}
+.upload-drop:hover{border-color:var(--spyne-primary); background:var(--spyne-primary-06)}
+.upload-drop .ic-xl{color:var(--text-3); margin-bottom:10px}
+.upload-drop .upload-browse{color:var(--spyne-primary); font-weight:700; text-decoration:underline}
+.upload-hint{font-size:12.5px; color:var(--text-3); margin-top:6px}
+.upload-file-chip{display:flex; align-items:center; gap:12px; text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 12px}
+.upload-file-badge{font-size:11px; font-weight:700; color:var(--spyne-primary); background:var(--spyne-primary-soft); border-radius:6px; padding:6px 10px; flex:0 0 auto}
+.upload-file-name{font-size:13.5px; font-weight:600; color:var(--text)}
+.upload-file-size{font-size:12px; color:var(--text-3); margin-top:1px}
+.upload-file-remove{margin-left:auto; color:var(--text-3); flex:0 0 auto}
+.upload-file-remove:hover{color:var(--error)}
 
 /* ===== MAPPING STATE ===== */
 .drop-grid.one{grid-template-columns:1fr; max-width:520px}
@@ -259,9 +284,28 @@ a{color:inherit; text-decoration:none}
 .maptable tr:last-child td{border-bottom:0}
 .maptable tr.gate-empty{background:var(--error-soft)}
 .maptable .mapwhat{color:var(--text-2); font-size:12.5px; line-height:1.45; max-width:44ch}
-.maptable select.mapsel{width:100%; max-width:220px; height:34px; border-radius:6px; border:1px solid var(--border); padding:0 8px; font:inherit; font-size:13px; background:var(--surface); color:var(--text)}
-.maptable select.mapsel:focus-visible{border-color:var(--spyne-primary)}
-.maptable select.mapsel.err{border-color:var(--error)}
+
+/* Searchable column picker (replaces the native select in the map table) */
+.mapcombo{display:flex; align-items:center; gap:6px; width:100%; max-width:220px; height:34px; border-radius:6px; border:1px solid var(--border); padding:0 8px; font:inherit; font-size:13px; text-align:left; background:var(--surface); color:var(--text)}
+.mapcombo:hover{border-color:var(--text-faint)}
+.mapcombo.open{border-color:var(--spyne-primary); box-shadow:0 0 0 3px var(--spyne-primary-12)}
+.mapcombo.err{border-color:var(--error)}
+.mapcombo-val{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.mapcombo-val.empty{color:var(--text-faint)}
+.mapcombo.err .mapcombo-val.empty{color:var(--error)}
+.mapcombo-caret{color:var(--text-3)}
+.mapcombo-panel{position:fixed; z-index:60; display:flex; flex-direction:column; border-radius:8px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-pop); overflow:hidden}
+.mapcombo-search{display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--border-2); color:var(--text-3)}
+.mapcombo-search input{flex:1; min-width:0; border:0; outline:0; font:inherit; font-size:13px; color:var(--text); background:none}
+.mapcombo-search input::placeholder{color:var(--text-faint)}
+.mapcombo-list{margin:0; padding:4px; list-style:none; overflow-y:auto}
+.mapcombo-opt{display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:6px; font-size:13px; cursor:pointer; color:var(--text)}
+.mapcombo-opt.active{background:var(--spyne-primary-06)}
+.mapcombo-opt.clear{color:var(--text-3)}
+.mapcombo-opt .ic{color:var(--spyne-primary)}
+.mapcombo-opt-text{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.mapcombo-taken{margin-left:6px; font-size:11px; font-style:normal; color:var(--text-faint)}
+.mapcombo-empty{padding:12px 10px; font-size:12.5px; color:var(--text-3)}
 .maptable .mapmeta{font-size:11px; color:var(--text-3); margin-top:4px}
 
 .spin{display:inline-block; width:16px; height:16px; flex:0 0 auto; border:2px solid var(--border); border-top-color:var(--spyne-primary); border-radius:50%; animation:spin .7s linear infinite}

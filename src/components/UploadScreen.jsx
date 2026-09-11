@@ -1,8 +1,31 @@
+import { FILE_TYPE_OPTIONS } from '../lib/file-types.js';
 import { Icon } from '../lib/icons.jsx';
 
-export function UploadScreen({ state, onFileChange, onContinue }) {
+/** "3 min ago" / "2 hours ago" / "5 days ago" - relative-time for lastUploadAt. */
+function formatRelativeTime(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+export function UploadScreen({ state, onFileChange, onFileTypeChange, onContinue }) {
   const hasFile = !!state.fileObj;
+  const hasFileType = !!state.fileType;
   const openPicker = () => document.getElementById('fileInput')?.click();
+
+  const teamStatus = state.teamStatus;
+  const crm = teamStatus?.crm;
+  const crmLabel = crm
+    ? `CRM connected · ${crm.charAt(0).toUpperCase()}${crm.slice(1)}`
+    : 'CRM - Not Connected';
+  const lastSyncedLabel = teamStatus?.lastUploadAt
+    ? `Last synced ${formatRelativeTime(teamStatus.lastUploadAt)}`
+    : 'Never synced';
 
   return (
     <>
@@ -14,6 +37,21 @@ export function UploadScreen({ state, onFileChange, onContinue }) {
             Upload your CRM lead export. We map its columns onto our fields, you confirm, then it
             syncs in — no CSV wrangling, no guesswork.
           </div>
+          {teamStatus && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+              <span
+                className="chip"
+                style={
+                  crm
+                    ? { background: 'var(--success-soft)', color: 'var(--success)' }
+                    : { background: 'var(--error-soft)', color: 'var(--error)' }
+                }
+              >
+                {crmLabel}
+              </span>
+              <span className="chip n">{lastSyncedLabel}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -30,6 +68,25 @@ export function UploadScreen({ state, onFileChange, onContinue }) {
             <span className="up-step"><span className="n">2</span> Map its columns</span>
             <span className="up-step"><span className="n">3</span> Confirm &amp; sync</span>
           </div>
+        </div>
+      </div>
+
+      <div className="card pad" style={{ marginBottom: 14 }}>
+        <b>What is this file?</b>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+          {FILE_TYPE_OPTIONS.map((option) => {
+            const isActive = state.fileType === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`btn sm ${isActive ? '' : 'sec'}`}
+                onClick={() => onFileTypeChange(option.value)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -79,7 +136,7 @@ export function UploadScreen({ state, onFileChange, onContinue }) {
       )}
 
       <div className="up-foot">
-        <button type="button" className="btn lg" disabled={!hasFile} onClick={onContinue}>
+        <button type="button" className="btn lg" disabled={!hasFile || !hasFileType} onClick={onContinue}>
           <Icon name="scan" className="ic" /> Continue to mapping
         </button>
         <span className="trust"><Icon name="shield" className="ic ic-18" /> Read-only &middot; encrypted</span>

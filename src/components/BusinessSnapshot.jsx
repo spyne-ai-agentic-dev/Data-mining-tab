@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { Icon } from '../lib/icons.jsx';
+import { SERVICE_TYPE } from '../lib/config.js';
+import { UploadDataModal } from './UploadDataModal.jsx';
 
 function fmtMonthYear(iso) {
   if (!iso) return '';
@@ -48,6 +51,8 @@ function OppRow({ o, isAuto }) {
  * from the lead-uploads flow - reflects the team's whole lead book, not
  * just the file just synced. */
 export function BusinessSnapshot({ state }) {
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
   if (state.snapshotError) {
     return (
       <div className="helpbox err" style={{ marginTop: 14 }}>
@@ -111,7 +116,21 @@ export function BusinessSnapshot({ state }) {
               `${autoOpps.length} ready · sorted by eligible customers`
             )}
           </span>
+          {SERVICE_TYPE === 'service' && (
+            <button
+              type="button"
+              className="btn sec sm"
+              style={{ marginLeft: 12 }}
+              onClick={() => setShowUploadModal(true)}
+            >
+              <Icon name="cloud_upload" className="ic ic-sm" /> Upload Data
+            </button>
+          )}
         </div>
+
+        {showUploadModal && (
+          <UploadDataModal department={SERVICE_TYPE} onClose={() => setShowUploadModal(false)} />
+        )}
         <div className="opptable-head" style={{ marginTop: 14 }}>
           <span>Opportunity</span>
           <span style={{ textAlign: 'right' }}>Eligible customers</span>
