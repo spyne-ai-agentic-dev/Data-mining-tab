@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './lib/api.js';
 import { cleanWarningMessage } from './lib/clean-warning-message.js';
 import { ENTERPRISE_ID, TEAM_ID } from './lib/config.js';
+import { matchCrmOptionLabel, slugifyCrmLabel } from './lib/crm-options.js';
 import { UploadScreen } from './components/UploadScreen.jsx';
 import { MappingScreen } from './components/MappingScreen.jsx';
 import { SyncingScreen } from './components/SyncingScreen.jsx';
@@ -35,6 +36,7 @@ function makeInitialState() {
     fileType: null, // one of FILE_TYPE_OPTIONS' values - required before Continue
     attachError: null,
     teamStatus: null, // GET /lead-uploads/team-status - crm + lastUploadAt for this team
+    crm: null, // selected CRM_OPTIONS label - defaults from teamStatus once it loads, operator can override
 
     // mapping
     mappingLoading: false,
@@ -78,7 +80,14 @@ export default function App() {
   useEffect(() => {
     if (!ENTERPRISE_ID || !TEAM_ID) return;
     api.getTeamStatus({ enterpriseId: ENTERPRISE_ID, teamId: TEAM_ID })
-      .then((teamStatus) => { stateRef.current.teamStatus = teamStatus; rerender(); })
+      .then((teamStatus) => {
+        const s = stateRef.current;
+        s.teamStatus = teamStatus;
+        // Default the picker to the auto-detected CRM, same as the campaign
+        // upload flow - the operator can still change it below.
+        s.crm = matchCrmOptionLabel(teamStatus?.crm) ?? 'Other / not listed';
+        rerender();
+      })
       .catch(() => {});
   }, [rerender]);
 
@@ -104,19 +113,19 @@ export default function App() {
     rerender();
     try {
       const s3Key = await api.uploadFileToS3(s.fileObj);
-      // team-status already told us the real connected CRM (see
-      // UploadScreen's "CRM connected · X" chip) - the stored mapping is
-      // keyed on that real slug, so sending the generic 'other' here when
-      // we already know it is a guaranteed 404 at analyze/confirm time.
-      // Only fall back to 'other'/'CRM export' when nothing is connected.
-      const crm = s.teamStatus?.crm;
+      // Use whatever the operator picked in the CRM selector (defaults to
+      // the auto-detected team-status CRM, but they can override it) -
+      // the stored mapping is keyed on this real slug.
+      const isOther = !s.crm || s.crm === 'Other / not listed';
+      const providerName = isOther ? 'other' : slugifyCrmLabel(s.crm);
+      const providerLabel = isOther ? (s.crm || 'CRM export') : undefined;
       const [mf, az] = await Promise.all([
         api.getMasterFields(),
         api.analyzeMapping({
           enterpriseId: ENTERPRISE_ID,
           teamId: TEAM_ID,
-          providerName: crm || 'other',
-          providerLabel: crm ? undefined : 'CRM export',
+          providerName,
+          providerLabel,
           files: [{ s3Key, type: s.fileType }],
         }),
       ]);
@@ -147,6 +156,11 @@ export default function App() {
 
   const handleFileTypeChange = useCallback((fileType) => {
     stateRef.current.fileType = fileType;
+    rerender();
+  }, [rerender]);
+
+  const handleCrmChange = useCallback((crm) => {
+    stateRef.current.crm = crm;
     rerender();
   }, [rerender]);
 
@@ -255,6 +269,7 @@ export default function App() {
         state={state}
         onFileChange={handleFileChange}
         onFileTypeChange={handleFileTypeChange}
+        onCrmChange={handleCrmChange}
         onContinue={goToMapping}
       />
     );

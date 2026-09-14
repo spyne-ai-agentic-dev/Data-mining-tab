@@ -1,3 +1,4 @@
+import { CRM_OPTIONS } from '../lib/crm-options.js';
 import { FILE_TYPE_OPTIONS } from '../lib/file-types.js';
 import { Icon } from '../lib/icons.jsx';
 
@@ -13,7 +14,7 @@ function formatRelativeTime(iso) {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
-export function UploadScreen({ state, onFileChange, onFileTypeChange, onContinue }) {
+export function UploadScreen({ state, onFileChange, onFileTypeChange, onCrmChange, onContinue }) {
   const hasFile = !!state.fileObj;
   const hasFileType = !!state.fileType;
   const openPicker = () => document.getElementById('fileInput')?.click();
@@ -68,6 +69,25 @@ export function UploadScreen({ state, onFileChange, onFileTypeChange, onContinue
             <span className="up-step"><span className="n">2</span> Map its columns</span>
             <span className="up-step"><span className="n">3</span> Confirm &amp; sync</span>
           </div>
+        </div>
+      </div>
+
+      <div className="card pad" style={{ marginBottom: 14 }}>
+        <b>Which CRM is this export from?</b>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+          {CRM_OPTIONS.map((option) => {
+            const isActive = state.crm === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                className={`btn sm ${isActive ? '' : 'sec'}`}
+                onClick={() => onCrmChange(option)}
+              >
+                {option}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -132,6 +152,13 @@ export function UploadScreen({ state, onFileChange, onFileTypeChange, onContinue
         <div className="helpbox err" style={{ marginTop: 14 }}>
           <Icon name="warning" className="ic" />
           <p>{state.attachError}</p>
+        </div>
+      )}
+
+      {hasFile && !hasFileType && (
+        <div className="helpbox warn" style={{ marginTop: 14 }}>
+          <Icon name="warning" className="ic" />
+          <p>Pick what this file is above before continuing.</p>
         </div>
       )}
 
