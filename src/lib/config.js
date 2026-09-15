@@ -57,6 +57,16 @@ const ENV_API_BASE_URL = {
   uat: 'https://uat-api.spyne.xyz',
 };
 
+// Same reasoning as ENV_API_BASE_URL, for the S3 bucket a bare upload key
+// gets prefixed with (see api.js's uploadFileToS3). This was missing
+// entirely before - s3BucketBaseUrl only ever came from config.json, so a
+// prod embed (?env=prod) still silently uploaded against the UAT bucket
+// unless that branch's own config.json happened to override it too.
+const ENV_S3_BASE_URL = {
+  prod: 'https://spyne-prod-conversational-ai.s3.us-east-1.amazonaws.com',
+  uat: 'https://spyne-uat-convert-ai.s3.us-east-1.amazonaws.com',
+};
+
 const qp = new URLSearchParams(window.location.search);
 
 // Real console embedding contract:
@@ -77,17 +87,19 @@ export const SERVICE_TYPE = qp.get('serviceType') || 'sales';
 
 config.leadUpload.bearerToken = TOKEN;
 if (ENV_API_BASE_URL[ENV]) config.leadUpload.apiBaseUrl = ENV_API_BASE_URL[ENV];
+if (ENV_S3_BASE_URL[ENV]) config.leadUpload.s3BucketBaseUrl = ENV_S3_BASE_URL[ENV];
 
 // Fire-and-forget - resolves well before the user can trigger a real API
 // call, and if it 404s (e.g. local dev without the file) the hardcoded/env
 // defaults above stand. Only a fallback for when this page is opened
 // without going through the console (no `?env=`) - env, when present,
-// already decided apiBaseUrl above and must not be clobbered here.
+// already decided apiBaseUrl/s3BucketBaseUrl above and must not be
+// clobbered here.
 fetch('/config.json')
   .then((r) => (r.ok ? r.json() : null))
   .then((cfg) => {
     if (!cfg) return;
     if (!ENV_API_BASE_URL[ENV] && cfg.apiBaseUrl) config.leadUpload.apiBaseUrl = cfg.apiBaseUrl;
-    if (cfg.s3BucketBaseUrl) config.leadUpload.s3BucketBaseUrl = cfg.s3BucketBaseUrl;
+    if (!ENV_S3_BASE_URL[ENV] && cfg.s3BucketBaseUrl) config.leadUpload.s3BucketBaseUrl = cfg.s3BucketBaseUrl;
   })
   .catch(() => {});
