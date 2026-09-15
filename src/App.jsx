@@ -77,20 +77,6 @@ export default function App() {
     window.scrollTo(0, 0);
   });
 
-  useEffect(() => {
-    if (!ENTERPRISE_ID || !TEAM_ID) return;
-    api.getTeamStatus({ enterpriseId: ENTERPRISE_ID, teamId: TEAM_ID })
-      .then((teamStatus) => {
-        const s = stateRef.current;
-        s.teamStatus = teamStatus;
-        // Default the picker to the auto-detected CRM, same as the campaign
-        // upload flow - the operator can still change it below.
-        s.crm = matchCrmOptionLabel(teamStatus?.crm) ?? 'Other / not listed';
-        rerender();
-      })
-      .catch(() => {});
-  }, [rerender]);
-
   const resetToUpload = useCallback(() => {
     stateRef.current = makeInitialState();
     rerender();
@@ -204,6 +190,42 @@ export default function App() {
       rerender();
     }
   }, [pollOpportunities, rerender]);
+
+  useEffect(() => {
+    if (!ENTERPRISE_ID || !TEAM_ID) return;
+    api.getTeamStatus({ enterpriseId: ENTERPRISE_ID, teamId: TEAM_ID })
+      .then(async (teamStatus) => {
+        const s = stateRef.current;
+        s.teamStatus = teamStatus;
+        // Default the picker to the auto-detected CRM, same as the campaign
+        // upload flow - the operator can still change it below.
+        s.crm = matchCrmOptionLabel(teamStatus?.crm) ?? 'Other / not listed';
+
+        // Already synced once for this rooftop - land straight on the
+        // results page instead of making the dealer re-upload just to see
+        // it again. Only short-circuits on a genuinely terminal run;
+        // anything still in flight falls through to the normal upload
+        // screen (there's no flowId poll loop to resume here).
+        const lastUpload = teamStatus?.lastUpload;
+        if (lastUpload?.flowId && SYNC_TERMINAL.has(lastUpload.state)) {
+          try {
+            const status = await api.getSyncStatus(lastUpload.flowId);
+            s.flowId = lastUpload.flowId;
+            s.finalStatus = status;
+            s.name = 'synced';
+            rerender();
+            if (status.state !== 'failed') loadBusinessSnapshot();
+            return;
+          } catch {
+            // Fall through to the normal upload screen if the status fetch
+            // fails - better to let them re-upload than get stuck.
+          }
+        }
+
+        rerender();
+      })
+      .catch(() => {});
+  }, [loadBusinessSnapshot, rerender]);
 
   const pollSyncStatus = useCallback(async () => {
     const s = stateRef.current;
