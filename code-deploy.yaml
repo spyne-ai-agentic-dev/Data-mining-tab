@@ -1,13 +1,10 @@
 version: 0.2
-# Type B, containerized frontend (Infrastructure Onboarding §3c) - ECS
-# deploy handoff. imagedefinitions.json (from code-build.yaml) is what
-# actually plugs into the pipeline; this stage just validates it landed.
+artifacts:
+  files:
+    - imagedefinitions.json
 phases:
   post_build:
     commands:
       - test -f imagedefinitions.json
       - cat imagedefinitions.json
       - echo Container deploy completed
-artifacts:
-  files:
-    - imagedefinitions.json
